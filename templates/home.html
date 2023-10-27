@@ -1,0 +1,40 @@
+{% extends "_layout.html" %}
+{% block title %}Home{% endblock %}
+{% block script %}
+<script type="module" nonce="{{g.csp_nonce}}">
+    import { list_users, get_profile, format_profile, do_action, get_buddy_status } from '/script.js';
+
+    // keep track of the current user in a global variable (the value is expanded by the template processor)
+    window.current_user_id = '{{current_user.id}}';
+
+    // Add some code to be run when the document is loaded (ensures that the
+    // users element actually exist before we call `document.getElementById())
+    // It's `async` because we need to `await` the result of network requests.
+    document.addEventListener("DOMContentLoaded", async (ev) => {
+        let users = await list_users();
+        users = users.map(user => {
+            const elt = format_profile(user);
+            elt.addEventListener('click', async (ev) => {
+                if (ev.target.dataset.action) {
+                    do_action(ev.target, current_user_id);
+                } else {
+                    elt.classList.toggle('open');
+                    const current = await get_profile(window.current_user_id);
+                    const other = await get_profile(user.id);
+                    const buddy_status = await get_buddy_status(current, other);
+                    if (other)
+                        format_profile(other, elt, buddy_status);
+                }
+            });
+            return elt;
+        });
+    
+        document.getElementById('users').replaceChildren(...users);
+    })
+</script>
+{% endblock %}
+{% block content %}
+<h1>Welcome to HeadBook™!</h1>
+<p>Click on user to learn more about them:</p>
+<div id="users" class="users">Loading users…</div>
+{% endblock %}

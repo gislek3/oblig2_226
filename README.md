@@ -1,5 +1,9 @@
 <h3>I have written some explanations of my work, which can be found in the "explanations" folder, they are marked for each task. Here, I attempt to answer the questions presented in the assignment text. Please review them in the context of the code. Thank you!</h3>
 
+<br><br>
+
+<h3>A summary of changes made during mandatory assignment 3 can be found in 3b.md in "explanations" folder.</h3>
+
 Original README:
 # “HeadBook” Example Project (INF226, 2023)
 

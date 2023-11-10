@@ -33,21 +33,8 @@ app = Flask(
     template_folder=os.path.join(APP_PATH, "templates/"),
     static_folder=os.path.join(APP_PATH, "static/"),
 )
-# You can also load app configuration from a Python file – this could
-# be a convenient way of loading secret tokens and other configuration data
-# that shouldn't be pushed to Git.
-#    app.config.from_pyfile(os.path.join(APP_PATH, 'secrets'))
 
-# The secret key enables storing encrypted session data in a cookie (TODO: make a secure random key for this! and don't store it in Git!)
-app.config["SECRET_KEY"] = "mY s3kritz"
-app.config["TEMPLATES_AUTO_RELOAD"] = True
-#app.config["GITLAB_BASE_URL"] = 'https://git.app.uib.no/'
-#app.config["GITLAB_CLIENT_ID"] = ''
-#app.config["GITLAB_CLIENT_SECRET"] = ''
-# Pick appropriate values for these
-#app.config['SESSION_COOKIE_NAME'] = 
-#app.config['SESSION_COOKIE_SAMESITE'] = 
-#app.config['SESSION_COOKIE_SECURE'] = 
+app.config.from_pyfile('secrets')
 
 # Add a login manager to the app
 import flask_login
@@ -122,7 +109,6 @@ class User(flask_login.UserMixin, Box):
         sql = "DELETE FROM buddies WHERE user1_id = :us AND user2_id = :them;"
         params = {"us": self.id, "them" : other_user.id}
         sql_execute(sql, params)
-    
     
     def buddy_status(self, other_user):
         if self.id == other_user.id:
@@ -296,8 +282,7 @@ def login():
             password = form.password.data
             user = user_loader(username)
             
-            #TODO: DELETE the last part of this IF STATEMENT:
-            if (user and check_password_hash(user.password, password)) or password=="debug":
+            if (user and check_password_hash(user.password, password)):
                 # automatically sets logged in session cookie
                 login_user(user)
 
@@ -386,13 +371,16 @@ def get_user(userid):
         u = current_user
     else:
         u = User.get_user(userid)
-        
+    
     if u:
         del u["password"] # hide the password, just in case
-        if prefers_json():
-            return jsonify(u)
+        if u == current_user or (current_user.buddy_status(u) >= 2):
+            if prefers_json():
+                return jsonify(u)
+            else:
+                return render_template("users.html", users=[u])
         else:
-            return render_template("users.html", users=[u])
+            return "You don't have access to this user's page."
     else:
         abort(404)
 
@@ -443,7 +431,13 @@ def before_request():
 # Can be used to set HTTP headers on the responses
 @app.after_request
 def after_request(response):
-    # response.headers["Content-Security-Policy"] = 
+    
+    #Define the header
+    csp_header = f"default-src 'self'; script-src 'self' 'nonce-{g.csp_nonce}'; style-src 'self' 'unsafe-inline'; img-src 'self' 'https://git.app.uib.no/*'; font-src 'self'"
+    
+    # Add the CSP header to the response
+    response.headers["Content-Security-Policy"] = csp_header
+
     return response
 
 def get_safe_redirect_url():
@@ -578,5 +572,3 @@ def task2c__DB_update():
 
 with app.app_context():
     sql_init()
-
-
